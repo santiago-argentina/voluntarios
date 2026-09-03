@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manada — Red de rescate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Karla:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg: #12171B;
+    --surface: #1B2228;
+    --surface-2: #232C33;
+    --line: #2E383F;
+    --text: #F3EFE4;
+    --muted: #93A0A6;
+    --amber: #F2B134;
+    --amber-dim: #7A5E1D;
+    --teal: #4FA88F;
+    --coral: #E8593F;
+    --coral-dim: #4A2A22;
+    font-size: 16px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: radial-gradient(1200px 800px at 50% -10%, #1A2128 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: 'Karla', sans-serif;
+    min-height: 100vh;
+    display:flex;
+    justify-content:center;
+  }
+  #app{
+    width:100%;
+    max-width: 480px;
+    min-height:100vh;
+    background: var(--bg);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+  }
+
+  /* HEADER */
+  header{
+    padding: 22px 20px 16px;
+    background: linear-gradient(180deg, #171E24 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top:0; z-index:20;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand-mark{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:800;
+    font-size: 30px;
+    letter-spacing: 0.5px;
+    color: var(--text);
+    line-height:1;
+  }
+  .brand-mark span{ color: var(--amber); }
+  .brand-tag{
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing:0.3px;
+  }
+  .brand-sub{ margin-top:4px; font-size:13.5px; color:var(--muted); }
+  .config-warning{
+    margin-top:12px; background: var(--coral-dim); border:1px solid var(--coral); color:#FFD9CE;
+    font-size:12px; line-height:1.5; padding:10px 12px; border-radius:10px;
+  }
+
+  /* TAG / BEACON SIGNATURE ELEMENT */
+  .tag-icon{
+    width:15px; height:15px; flex:none;
+    display:inline-block;
+    position:relative;
+  }
+  .tag-icon svg{ width:100%; height:100%; display:block; }
+
+  main{ flex:1; padding: 16px 16px 100px; }
+  .view{ display:none; animation: fade .25s ease; }
+  .view.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  h2.section-title{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.3px;
+    margin: 4px 2px 14px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .count-pill{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color: var(--bg);
+    background: var(--amber);
+    padding:2px 8px;
+    border-radius:20px;
+    font-weight:600;
+  }
+
+  /* ALERT CARD */
+  .alert-card{
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .alert-card.urgent{ border-color: var(--coral); }
+  .alert-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .urgency-badge{
+    font-size:11px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    padding:4px 9px; border-radius:20px; flex:none;
+    display:flex; align-items:center; gap:6px;
+  }
+  .urgency-alta{ background: var(--coral-dim); color:#FF9C86; }
+  .urgency-media{ background: var(--amber-dim); color:#FFD98C; }
+  .urgency-baja{ background: #26383A; color:#8FD9C4; }
+
+  .beacon{
+    width:7px; height:7px; border-radius:50%; background: var(--coral); flex:none;
+    box-shadow: 0 0 0 0 rgba(232,89,63,0.6);
+    animation: ping 1.6s ease-out infinite;
+  }
+  @keyframes ping{
+    0%{ box-shadow: 0 0 0 0 rgba(232,89,63,0.55); }
+    70%{ box-shadow: 0 0 0 9px rgba(232,89,63,0); }
+    100%{ box-shadow: 0 0 0 0 rgba(232,89,63,0); }
+  }
+
+  .alert-desc{ font-size:15.5px; line-height:1.4; margin:10px 0 8px; color:var(--text); }
+  .alert-meta{ display:flex; flex-wrap:wrap; gap:12px; font-size:12.5px; color:var(--muted); margin-bottom:10px; }
+  .alert-meta span{ display:flex; align-items:center; gap:5px; }
+  .alert-notes{ font-size:13px; color:var(--muted); background:var(--surface-2); padding:8px 10px; border-radius:8px; margin-bottom:10px; }
+  .alert-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .status-pill{
+    font-family:'JetBrains Mono', monospace; font-size:11px; padding:3px 8px; border-radius:6px;
+    background:var(--surface-2); color:var(--muted); margin-left:auto;
+  }
+  .status-pill.resuelto{ color: var(--teal); }
+  .helpers-line{ font-size:12px; color: var(--teal); margin-top:6px; }
+
+  /* BUTTONS */
+  .btn{
+    font-family:'Karla', sans-serif; font-weight:700; font-size:14px;
+    padding:10px 16px; border-radius:9px; border:none; cursor:pointer;
+    transition: transform .1s ease, filter .15s ease;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background: var(--amber); color:#1A1204; }
+  .btn-primary:hover{ filter:brightness(1.08); }
+  .btn-outline{ background:transparent; color:var(--text); border:1px solid var(--line); }
+  .btn-outline:hover{ border-color: var(--amber); }
+  .btn-teal{ background: var(--teal); color:#0B211C; }
+  .btn-small{ padding:7px 12px; font-size:12.5px; border-radius:7px; }
+  .btn-block{ width:100%; }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+
+  /* FORMS */
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px; letter-spacing:0.2px; }
+  .field input[type=text], .field input[type=tel], .field select, .field textarea{
+    width:100%; background: var(--surface); border:1px solid var(--line); color:var(--text);
+    padding:11px 12px; border-radius:9px; font-family:'Karla',sans-serif; font-size:14.5px;
+  }
+  .field textarea{ resize:vertical; min-height:70px; }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+  .chip-group{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{
+    font-size:13px; padding:8px 13px; border-radius:20px; border:1px solid var(--line);
+    background:var(--surface); color:var(--muted); cursor:pointer; user-select:none;
+  }
+  .chip.selected{ background: var(--amber); color:#1A1204; border-color:var(--amber); font-weight:700; }
+  .loc-row{ display:flex; gap:8px; }
+  .loc-row input{ flex:1; }
+  .geo-status{ font-size:11.5px; color: var(--teal); margin-top:6px; min-height:14px; }
+  .helper-text{ font-size:12px; color:var(--muted); margin-top:-8px; margin-bottom:16px; line-height:1.4; }
+
+  .empty-state{
+    text-align:center; padding: 50px 20px; color:var(--muted);
+  }
+  .empty-state .tag-icon{ width:34px; height:34px; margin:0 auto 14px; opacity:0.5; }
+  .empty-state p{ font-size:14px; line-height:1.5; }
+
+  .banner{
+    background: var(--surface-2); border:1px solid var(--line); border-radius:12px;
+    padding:14px; margin-bottom:16px; font-size:13px; color:var(--muted); line-height:1.5;
+  }
+  .banner strong{ color:var(--text); }
+
+  .uncovered-banner{
+    background: var(--coral-dim); border:1px solid var(--coral); border-radius:12px;
+    padding:14px; margin-bottom:14px; font-size:13px; color:#FFD9CE; line-height:1.5;
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+  .uncovered-banner strong{ color:#fff; }
+
+  .wa-vol-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; margin-bottom:8px; font-size:13.5px;
+  }
+  .wa-vol-row .wv-meta{ color:var(--muted); font-size:11.5px; }
+
+  /* PROFILE */
+  .profile-card{
+    background: var(--surface); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px;
+  }
+  .profile-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:24px; }
+  .profile-row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  .profile-row:last-child{ border-bottom:none; }
+  .profile-row span:first-child{ color:var(--muted); }
+  .tags-line{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .tag-mini{ font-size:11px; background:var(--surface-2); color:var(--muted); padding:4px 9px; border-radius:14px; }
+
+  /* NAV */
+  nav.tabbar{
+    position:sticky; bottom:0; left:0; right:0;
+    background: rgba(23,30,36,0.96); backdrop-filter: blur(6px);
+    border-top:1px solid var(--line);
+    display:flex;
+    z-index:30;
+  }
+  nav.tabbar button{
+    flex:1; background:none; border:none; color:var(--muted); cursor:pointer;
+    padding: 10px 2px 8px; display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-family:'Karla', sans-serif; font-size:9.5px; font-weight:600; letter-spacing:0.1px;
+  }
+  nav.tabbar button.active{ color: var(--amber); }
+  nav.tabbar svg{ width:18px; height:18px; }
+
+  .toast{
+    position:fixed; bottom:78px; left:50%; transform:translateX(-50%) translateY(20px);
+    background: var(--teal); color:#0B211C; font-weight:700; font-size:13px;
+    padding:10px 18px; border-radius:20px; opacity:0; pointer-events:none;
+    transition: all .25s ease; z-index:50; white-space:nowrap;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius:4px; }
+
+  /* MAPA */
+  .map-toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+  .map-toggle{
+    font-size:12px; padding:7px 12px; border-radius:20px; border:1px solid var(--line);
+    background:var(--surface); color:var(--muted); cursor:pointer; display:flex; align-items:center; gap:6px;
+  }
+  .map-toggle.active{ background:var(--surface-2); color:var(--text); border-color:var(--amber); }
+  .map-toggle .dot{ width:8px; height:8px; border-radius:50%; }
+  #mapContainer{
+    width:100%; height:340px; border-radius:14px; overflow:hidden; border:1px solid var(--line);
+    background:var(--surface); margin-bottom:14px;
+  }
+  .map-no-loc-note{ font-size:12px; color:var(--muted); margin-bottom:14px; line-height:1.5; }
+  .leaflet-popup-content-wrapper{ background:var(--surface); color:var(--text); border-radius:10px; }
+  .leaflet-popup-tip{ background:var(--surface); }
+  .leaflet-popup-content{ font-family:'Karla',sans-serif; font-size:13px; margin:10px 12px; }
+  .popup-urgency{ font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.4px; }
+  .popup-urgency.alta{ color:#FF9C86; }
+  .popup-urgency.media{ color:#FFD98C; }
+  .popup-urgency.baja{ color:#8FD9C4; }
+  .popup-actions{ margin-top:8px; }
+  .popup-actions a{ color: var(--amber); font-weight:700; font-size:12px; text-decoration:none; }
+  .marker-pin{ display:flex; align-items:center; justify-content:center; }
+  .marker-pin svg{ display:block; }
+
+  /* FOOTER */
+  .app-footer{ padding: 30px 20px 6px; text-align:center; }
+  .footer-divider{
+    height:1px; margin: 0 auto 18px; max-width:220px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
+  }
+  .footer-text{
+    font-size:11.5px; color:var(--muted); line-height:1.7; font-style:italic;
+    max-width:300px; margin:0 auto; letter-spacing:0.1px;
+  }
+  .footer-name{ color:var(--amber); font-weight:700; font-style:normal; }
+
+  .cluster-icon{
+    display:flex; align-items:center; justify-content:center;
+    width:100%; height:100%; border-radius:50%;
+    background: rgba(242,177,52,0.22);
+    border: 2px solid var(--amber);
+  }
+  .cluster-icon span{
+    background: var(--amber); color:#1A1204; font-weight:800;
+    font-family:'Barlow Condensed', sans-serif; font-size:14px;
+    width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  }
+  .helpers-popup-line{ font-size:11.5px; color: var(--teal); margin-top:4px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand">
+      <span class="tag-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 L20 7 V13 C20 18 16.4 21.3 12 22 C7.6 21.3 4 18 4 13 V7 Z" fill="#F2B134"/><circle cx="12" cy="12" r="2.6" fill="#12171B"/></svg>
+      </span>
+      <div class="brand-mark">MANA<span>DA</span></div>
+    </div>
+    <div class="brand-sub" id="headerSub">Red de voluntarios para perros en situación de calle</div>
+    <div id="configWarning" class="config-warning" style="display:none;"></div>
+  </header>
+
+  <main>
+
+    <!-- ALERTAS -->
+    <section id="view-alerts" class="view active">
+      <h2 class="section-title">Alertas cercanas <span class="count-pill" id="alertCount">0</span></h2>
+      <div id="locBanner" class="banner" style="display:none;"></div>
+      <div id="uncoveredBanner" class="uncovered-banner" style="display:none;"></div>
+      <div class="map-toolbar">
+        <div class="map-toggle active" id="filter-all">Todas</div>
+        <div class="map-toggle" id="filter-uncovered"><span class="dot" style="background:#E8593F;"></span>Sin cubrir</div>
+      </div>
+      <div id="alertsList"></div>
+    </section>
+
+    <!-- MAPA -->
+    <section id="view-map" class="view">
+      <h2 class="section-title">Mapa de casos</h2>
+      <div class="map-toolbar">
+        <div class="map-toggle active" id="toggle-alerts"><span class="dot" style="background:#E8593F;"></span>Casos</div>
+        <div class="map-toggle active" id="toggle-vols"><span class="dot" style="background:#4FA88F;"></span>Voluntarios</div>
+        <button class="btn btn-outline btn-small" id="map-geo-btn" style="margin-left:auto;">📍 Centrar en mí</button>
+      </div>
+      <div id="mapContainer"></div>
+      <div class="geo-status" id="map-geo-status" style="margin-bottom:10px;"></div>
+      <div id="mapNoLocList"></div>
+    </section>
+
+    <!-- REPORTAR -->
+    <section id="view-report" class="view">
+      <h2 class="section-title">Reportar un caso</h2>
+      <div class="banner"><strong>Contá lo que ves.</strong> Cuanto más preciso el lugar, más rápido va a llegar ayuda.</div>
+      <form id="reportForm">
+        <div class="field">
+          <label>¿Qué le pasa al perro?</label>
+          <textarea id="r-desc" placeholder="Ej: Perro mediano, cojea de la pata trasera, muy asustado, cerca de la plaza." required></textarea>
+        </div>
+        <div class="field">
+          <label>Nivel de urgencia</label>
+          <select id="r-urgency">
+            <option value="alta">Alta — herido, enfermo o en peligro</option>
+            <option value="media" selected>Media — necesita ayuda pero está estable</option>
+            <option value="baja">Baja — solo necesita seguimiento o difusión</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Ubicación (barrio, calles, referencia)</label>
+          <div class="loc-row">
+            <input type="text" id="r-zone" placeholder="Ej: La Banda, Bº Centro, cerca de la terminal" required>
+            <button type="button" class="btn btn-outline btn-small" id="r-geo-btn">📍 Usar mi ubicación</button>
+          </div>
+          <div class="geo-status" id="r-geo-status"></div>
+        </div>
+        <div class="field">
+          <label>Notas adicionales (opcional)</label>
+          <textarea id="r-notes" placeholder="Horario en que lo viste, si hay más animales, si alguien lo está cuidando mientras tanto..."></textarea>
+        </div>
+        <div class="field">
+          <label>Tu nombre de contacto</label>
+          <input type="text" id="r-contact-name" placeholder="Nombre y apellido" required>
+        </div>
+        <div class="field">
+          <label>Tu WhatsApp / teléfono</label>
+          <input type="tel" id="r-contact-phone" placeholder="Ej: 385 4123456" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Publicar alerta</button>
+      </form>
+
+      <div id="postReportPanel" style="display:none; margin-top:18px;">
+        <div class="banner" style="border-color:var(--teal);"><strong>¡Alerta publicada!</strong> Ahora avisale a la red — cuanta más gente lo vea, más rápido llega ayuda.</div>
+        <button class="btn btn-teal btn-block" id="broadcastWaBtn" style="margin-bottom:12px;">📲 Avisar por WhatsApp (grupo o contactos)</button>
+        <div id="nearbyVolsForWa"></div>
+      </div>
+    </section>
+
+    <!-- REGISTRO / VOLUNTARIOS Y VETERINARIAS -->
+    <section id="view-register" class="view">
+      <h2 class="section-title">Red de protectores</h2>
+      <div class="map-toolbar">
+        <div class="map-toggle active" id="subtab-vols">🐾 Voluntarios</div>
+        <div class="map-toggle" id="subtab-vets">🩺 Veterinarias</div>
+      </div>
+
+      <div id="panel-vols">
+      <div id="alreadyRegisteredBanner" class="banner" style="display:none;"></div>
+      <form id="registerForm">
+        <div class="field">
+          <label>Nombre y apellido</label>
+          <input type="text" id="v-name" placeholder="¿Cómo te llamás?" required>
+        </div>
+        <div class="field">
+          <label>WhatsApp / teléfono</label>
+          <input type="tel" id="v-phone" placeholder="Ej: 385 4123456" required>
+        </div>
+        <div class="field">
+          <label>Zona / barrio donde te movés</label>
+          <div class="loc-row">
+            <input type="text" id="v-zone" placeholder="Ej: La Banda, Bº Independencia" required>
+            <button type="button" class="btn btn-outline btn-small" id="v-geo-btn">📍 Usar mi ubicación</button>
+          </div>
+          <div class="geo-status" id="v-geo-status"></div>
+        </div>
+        <div class="field">
+          <label>Radio en el que podés moverte</label>
+          <select id="v-radius">
+            <option value="2">Hasta 2 km</option>
+            <option value="5" selected>Hasta 5 km</option>
+            <option value="10">Hasta 10 km</option>
+            <option value="9999">Toda la ciudad</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>¿En qué podés ayudar?</label>
+          <div class="chip-group" id="helpTypes">
+            <div class="chip" data-val="rescate">Rescate en el lugar</div>
+            <div class="chip" data-val="traslado">Traslado en auto</div>
+            <div class="chip" data-val="veterinaria">Veterinaria / primeros auxilios</div>
+            <div class="chip" data-val="transito">Hogar de tránsito</div>
+            <div class="chip" data-val="adopcion">Buscar adopción</div>
+            <div class="chip" data-val="difusion">Difusión</div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Registrarme como voluntario</button>
+      </form>
+      <div style="margin-top:28px;">
+        <h2 class="section-title">Voluntarios en la red <span class="count-pill" id="volCount">0</span></h2>
+        <div id="volunteersList"></div>
+      </div>
+      </div>
+
+      <div id="panel-vets" style="display:none;">
+        <div class="banner"><strong>¿Sos veterinario/a o tenés una clínica?</strong> Sumate a la red para que los voluntarios sepan a quién recurrir en una urgencia.</div>
+        <form id="vetForm">
+          <div class="field">
+            <label>Nombre de la clínica o profesional</label>
+            <input type="text" id="vet-name" placeholder="Ej: Clínica Vet. San Roque / Dra. Pérez" required>
+          </div>
+          <div class="field">
+            <label>Teléfono / WhatsApp</label>
+            <input type="tel" id="vet-phone" placeholder="Ej: 385 4123456" required>
+          </div>
+          <div class="field">
+            <label>Dirección o zona</label>
+            <input type="text" id="vet-zone" placeholder="Ej: Av. Belgrano 712, La Banda" required>
+          </div>
+          <div class="field">
+            <label>¿Atiende urgencias?</label>
+            <div class="chip-group" id="vetUrgencyChip">
+              <div class="chip" data-val="24h">Urgencias 24 hs</div>
+              <div class="chip" data-val="horario">Solo en horario de atención</div>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Sumar veterinaria a la red</button>
+        </form>
+        <div style="margin-top:24px;">
+          <h2 class="section-title" style="font-size:18px;">Veterinarias registradas por la comunidad <span class="count-pill" id="vetCount">0</span></h2>
+          <div id="vetsList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECURSOS / ENLACES ÚTILES -->
+    <section id="view-resources" class="view">
+      <h2 class="section-title">Enlaces útiles</h2>
+      <div class="banner">Redes de protectoras, refugios y veterinarias de urgencia en Santiago del Estero, La Banda y alrededores (~80 km). Son datos públicos recopilados de sus propias redes — <strong>verificá el contacto antes de depender de él en una emergencia</strong>, ya que puede cambiar.</div>
+      <div id="curatedResourcesList"></div>
+    </section>
+
+    <!-- PERFIL -->
+    <section id="view-profile" class="view">
+      <h2 class="section-title">Mi perfil</h2>
+      <div id="profileContent"></div>
+    </section>
+
+    <footer class="app-footer">
+      <div class="footer-divider"></div>
+      <p class="footer-text">🐾 Por amor a los canichones y en memoria y agradecimiento a <span class="footer-name">Polaco</span>, el gran rescatista argentino.</p>
+    </footer>
+
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <nav class="tabbar">
+    <button data-view="view-alerts" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      Alertas
+    </button>
+    <button data-view="view-map">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg>
+      Mapa
+    </button>
+    <button data-view="view-report">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      Reportar
+    </button>
+    <button data-view="view-register">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+      Red
+    </button>
+    <button data-view="view-resources">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.6-9.5-9C.5 8 2 4 6 4c2 0 3.5 1.2 4 2 0.5-0.8 2-2 4-2 4 0 5.5 4 3.5 8C19 16.4 12 21 12 21Z"/></svg>
+      Recursos
+    </button>
+    <button data-view="view-profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Perfil
+    </button>
+  </nav>
+
+</div>
+
+<script>
+(function(){
+  const $ = (sel, ctx) => (ctx||document).querySelector(sel);
+  const $$ = (sel, ctx) => Array.from((ctx||document).querySelectorAll(sel));
+
+  let myVolunteerId = null;
+  let myLoc = null; // {lat,lng} para la sesión (reportar / feed)
+  let selectedHelpTypes = new Set();
+
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const timeAgo = (ts) => {
+    const s = Math.floor((Date.now()-ts)/1000);
+    if(s<60) return 'recién';
+    if(s<3600) return Math.floor(s/60)+' min';
+    if(s<86400) return Math.floor(s/3600)+' h';
+    return Math.floor(s/86400)+' d';
+  };
+  const haversine = (a,b) => {
+    const R=6371, toRad = d=>d*Math.PI/180;
+    const dLat = toRad(b.lat-a.lat), dLng = toRad(b.lng-a.lng);
+    const x = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+  };
+
+  function toast(msg){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+
+  // ============================================================
+  // CONFIGURACIÓN DE SUPABASE — completá con los datos de tu proyecto
+  // (Supabase → Project Settings → API)
+  // ============================================================
+  const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
+  const SUPABASE_ANON_KEY = 'TU-CLAVE-ANON-PUBLICA';
+  // ============================================================
+
+  const supaConfigured = !SUPABASE_URL.includes('TU-PROYECTO') && !SUPABASE_ANON_KEY.includes('TU-CLAVE');
+  const supabaseClient = supaConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  // ---------- Adaptador Supabase (mismo "contrato" que la app usaba con window.storage) ----------
+  // Cada tabla tiene un transformador de ida (objeto app -> fila de la tabla)
+  // y de vuelta (fila de la tabla -> objeto app), así el resto del código no cambia.
+  const TABLES = {
+    'alert:': {
+      table: 'alerts',
+      toRow: o => ({ id:o.id, desc:o.desc, urgency:o.urgency, zone:o.zone, notes:o.notes||'', contact_name:o.contactName, contact_phone:o.contactPhone, lat:o.loc?o.loc.lat:null, lng:o.loc?o.loc.lng:null, status:o.status, helpers:o.helpers||[], created_at:o.createdAt }),
+      fromRow: r => ({ id:r.id, desc:r.desc, urgency:r.urgency, zone:r.zone, notes:r.notes||'', contactName:r.contact_name, contactPhone:r.contact_phone, loc:(r.lat!=null && r.lng!=null)?{lat:r.lat,lng:r.lng}:null, status:r.status, helpers:r.helpers||[], createdAt:Number(r.created_at) })
+    },
+    'volunteer:': {
+      table: 'volunteers',
+      toRow: o => ({ id:o.id, name:o.name, phone:o.phone, zone:o.zone, radius_km:o.radiusKm, help_types:o.helpTypes||[], lat:o.loc?o.loc.lat:null, lng:o.loc?o.loc.lng:null, created_at:o.createdAt }),
+      fromRow: r => ({ id:r.id, name:r.name, phone:r.phone, zone:r.zone, radiusKm:Number(r.radius_km), helpTypes:r.help_types||[], loc:(r.lat!=null && r.lng!=null)?{lat:r.lat,lng:r.lng}:null, createdAt:Number(r.created_at) })
+    },
+    'vet:': {
+      table: 'vets',
+      toRow: o => ({ id:o.id, name:o.name, phone:o.phone, zone:o.zone, urgency:o.urgency, created_at:o.createdAt }),
+      fromRow: r => ({ id:r.id, name:r.name, phone:r.phone, zone:r.zone, urgency:r.urgency, createdAt:Number(r.created_at) })
+    }
+  };
+  function parseKey(key){
+    for(const prefix in TABLES){ if(key.startsWith(prefix)) return { prefix, id:key.slice(prefix.length), cfg:TABLES[prefix] }; }
+    return null;
+  }
+
+  async function storeGet(key, shared){
+    if(key === 'my-volunteer-id'){
+      try{ return localStorage.getItem('manada-my-volunteer-id'); } catch(e){ return null; }
+    }
+    if(!supaConfigured) return null;
+    const p = parseKey(key); if(!p) return null;
+    try{
+      const { data, error } = await supabaseClient.from(p.cfg.table).select('*').eq('id', p.id).maybeSingle();
+      if(error || !data) return null;
+      return p.cfg.fromRow(data);
+    } catch(e){ console.error('storeGet error', e); return null; }
+  }
+  async function storeSet(key, value, shared){
+    if(key === 'my-volunteer-id'){
+      try{ localStorage.setItem('manada-my-volunteer-id', value); return true; } catch(e){ return false; }
+    }
+    if(!supaConfigured) return false;
+    const p = parseKey(key); if(!p) return false;
+    try{
+      const row = p.cfg.toRow(value);
+      const { error } = await supabaseClient.from(p.cfg.table).upsert(row);
+      if(error) console.error('storeSet error', error);
+      return !error;
+    } catch(e){ console.error('storeSet error', e); return false; }
+  }
+  async function storeList(prefix, shared){
+    const cfg = TABLES[prefix]; if(!cfg || !supaConfigured) return [];
+    try{
+      const { data, error } = await supabaseClient.from(cfg.table).select('id');
+      if(error || !data) return [];
+      return data.map(r=>prefix+r.id);
+    } catch(e){ console.error('storeList error', e); return []; }
+  }
+
+  // ---------- NAV ----------
+  $$('.tabbar button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $$('.tabbar button').forEach(b=>b.classList.remove('active'));
+      $$('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      $('#'+btn.dataset.view).classList.add('active');
+      if(btn.dataset.view === 'view-alerts') renderAlerts();
+      if(btn.dataset.view === 'view-register'){ renderVolunteers(); renderVets(); }
+      if(btn.dataset.view === 'view-profile') renderProfile();
+      if(btn.dataset.view === 'view-map') renderMap();
+      if(btn.dataset.view === 'view-resources') renderCuratedResources();
+    });
+  });
+
+  // ---------- SUB-TABS: Red (Voluntarios / Veterinarias) ----------
+  $('#subtab-vols').addEventListener('click', function(){
+    this.classList.add('active');
+    $('#subtab-vets').classList.remove('active');
+    $('#panel-vols').style.display='block';
+    $('#panel-vets').style.display='none';
+  });
+  $('#subtab-vets').addEventListener('click', function(){
+    this.classList.add('active');
+    $('#subtab-vols').classList.remove('active');
+    $('#panel-vets').style.display='block';
+    $('#panel-vols').style.display='none';
+    renderVets();
+  });
+
+  // ---------- FILTRO Alertas: Todas / Sin cubrir ----------
+  let alertsFilter = 'all';
+  $('#filter-all').addEventListener('click', function(){
+    alertsFilter='all'; this.classList.add('active'); $('#filter-uncovered').classList.remove('active'); renderAlerts();
+  });
+  $('#filter-uncovered').addEventListener('click', function(){
+    alertsFilter='uncovered'; this.classList.add('active'); $('#filter-all').classList.remove('active'); renderAlerts();
+  });
+
+  // ---------- GEO helpers ----------
+  function requestGeo(statusEl, onOk){
+    if(!navigator.geolocation){
+      statusEl.textContent = 'Este navegador no permite geolocalización. Escribí la zona a mano.';
+      return;
+    }
+    statusEl.textContent = 'Buscando tu ubicación…';
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        statusEl.textContent = '✓ Ubicación capturada';
+        onOk(loc);
+      },
+      err => { statusEl.textContent = 'No se pudo obtener la ubicación. Escribí la zona a mano.'; },
+      { timeout: 8000 }
+    );
+  }
+
+  let reportLoc = null;
+  $('#r-geo-btn').addEventListener('click', ()=>{
+    requestGeo($('#r-geo-status'), loc=>{ reportLoc = loc; });
+  });
+  let registerLoc = null;
+  $('#v-geo-btn').addEventListener('click', ()=>{
+    requestGeo($('#v-geo-status'), loc=>{ registerLoc = loc; myLoc = loc; renderAlerts(); });
+  });
+
+  // ---------- CHIPS (tipos de ayuda) ----------
+  $$('#helpTypes .chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const v = chip.dataset.val;
+      if(selectedHelpTypes.has(v)){ selectedHelpTypes.delete(v); chip.classList.remove('selected'); }
+      else { selectedHelpTypes.add(v); chip.classList.add('selected'); }
+    });
+  });
+
+  const HELP_LABELS = { rescate:'Rescate', traslado:'Traslado', veterinaria:'Veterinaria', transito:'Tránsito', adopcion:'Adopción', difusion:'Difusión' };
+  const URGENCY_LABELS = { alta:'Urgente', media:'Media', baja:'Baja' };
+
+  // ---------- CHIP urgencia veterinaria (selección única) ----------
+  let vetUrgency = '24h';
+  $$('#vetUrgencyChip .chip').forEach(chip=>{
+    if(chip.dataset.val === vetUrgency) chip.classList.add('selected');
+    chip.addEventListener('click', ()=>{
+      vetUrgency = chip.dataset.val;
+      $$('#vetUrgencyChip .chip').forEach(c=>c.classList.remove('selected'));
+      chip.classList.add('selected');
+    });
+  });
+
+  // ---------- REGISTRO DE VETERINARIA ----------
+  $('#vetForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const id = uid();
+    const vet = {
+      id,
+      name: $('#vet-name').value.trim(),
+      phone: $('#vet-phone').value.trim(),
+      zone: $('#vet-zone').value.trim(),
+      urgency: vetUrgency,
+      createdAt: Date.now()
+    };
+    const ok = await storeSet('vet:'+id, vet, true);
+    if(ok){
+      toast('¡Gracias! Veterinaria sumada a la red 🩺');
+      e.target.reset();
+      renderVets();
+    } else {
+      toast('No se pudo guardar. Probá de nuevo.');
+    }
+  });
+
+  async function renderVets(){
+    const keys = await storeList('vet:', true);
+    const vets = (await Promise.all(keys.map(k=>storeGet(k, true)))).filter(Boolean);
+    vets.sort((a,b)=>b.createdAt-a.createdAt);
+    $('#vetCount').textContent = vets.length;
+    const list = $('#vetsList');
+    if(vets.length===0){
+      list.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Todavía ninguna veterinaria se sumó desde la app. Mirá la pestaña <strong>Recursos</strong> para ver contactos ya conocidos en la zona.</p></div>`;
+      return;
+    }
+    list.innerHTML = vets.map(v=>`
+      <div class="profile-card" style="padding:14px 16px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <strong style="font-size:15px;">${escapeHtml(v.name)}</strong>
+          <span class="tag-mini" style="${v.urgency==='24h'?'color:#8FD9C4;':''}">${v.urgency==='24h'?'Urgencias 24 hs':'Horario de atención'}</span>
+        </div>
+        <div style="font-size:12.5px; color:var(--muted); margin-top:3px;">📍 ${escapeHtml(v.zone)}</div>
+        <div class="alert-actions" style="margin-top:10px;">
+          <a class="btn btn-outline btn-small" href="https://wa.me/${v.phone.replace(/\D/g,'')}" target="_blank" rel="noopener">Contactar por WhatsApp</a>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ---------- RECURSOS CURADOS (enlaces útiles ~80km) ----------
+  const CURATED_RESOURCES = [
+    {
+      category: 'Refugios y protectoras',
+      items: [
+        {
+          name: 'Refugio El Montecito de los Canichones',
+          desc: 'ONG de rescate y rehabilitación de perros en situación de calle, con base en La Banda (Bº El Bosque).',
+          links: [
+            { label: 'Facebook', url: 'https://www.facebook.com/canichones/' },
+            { label: 'Instagram', url: 'https://www.instagram.com/refugioelmontecito/' },
+            { label: 'Sitio web', url: 'https://montecitodeloscanichones.org/' }
+          ],
+          phone: '+5493855876977'
+        }
+      ]
+    },
+    {
+      category: 'Emergencias veterinarias',
+      items: [
+        {
+          name: 'Veterinarios del Monte Santiagueño (Emergencias Kuhn)',
+          desc: 'Grupo de veterinarios que organiza salidas y asistencia de urgencia en distintas zonas de la provincia.',
+          links: [ { label: 'Facebook', url: 'https://www.facebook.com/veterinariaskuhnemergencias/' } ]
+        },
+        {
+          name: 'Guardia Veterinaria Santiago del Estero',
+          desc: 'Grupo de veterinarios de distintas zonas de la provincia organizado para cubrir la falta de guardias de urgencia.',
+          links: [ { label: 'Facebook', url: 'https://www.facebook.com/guardiaveterinariaok/' } ]
+        }
+      ]
+    },
+    {
+      category: 'Clínicas veterinarias con atención de urgencia',
+      items: [
+        {
+          name: 'El Indio Veterinaria',
+          desc: 'Atiende pequeños y grandes animales; según su propia página, urgencias las 24 hs.',
+          links: [ { label: 'Instagram', url: 'https://www.instagram.com/elindio.vet/' } ]
+        },
+        {
+          name: 'Clínica Veterinaria Las Amarillas',
+          desc: 'Consultorio, cirugía, internación, urgencias y farmacia, en la capital.',
+          links: [ { label: 'Facebook', url: 'https://www.facebook.com/vet.amarilla.ok/' } ]
+        }
+      ]
+    }
+  ];
+
+  function renderCuratedResources(){
+    const wrap = $('#curatedResourcesList');
+    wrap.innerHTML = CURATED_RESOURCES.map(cat=>`
+      <h2 class="section-title" style="font-size:17px;">${escapeHtml(cat.category)}</h2>
+      ${cat.items.map(it=>`
+        <div class="profile-card" style="padding:14px 16px; margin-bottom:12px;">
+          <strong style="font-size:15px;">${escapeHtml(it.name)}</strong>
+          <div style="font-size:13px; color:var(--muted); margin:6px 0 10px; line-height:1.4;">${escapeHtml(it.desc)}</div>
+          <div class="alert-actions">
+            ${it.links.map(l=>`<a class="btn btn-outline btn-small" href="${l.url}" target="_blank" rel="noopener">${escapeHtml(l.label)}</a>`).join('')}
+            ${it.phone ? `<a class="btn btn-teal btn-small" href="https://wa.me/${it.phone.replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    `).join('');
+  }
+
+  // ---------- REGISTRO ----------
+  $('#registerForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const id = myVolunteerId || uid();
+    const vol = {
+      id,
+      name: $('#v-name').value.trim(),
+      phone: $('#v-phone').value.trim(),
+      zone: $('#v-zone').value.trim(),
+      radiusKm: Number($('#v-radius').value),
+      helpTypes: Array.from(selectedHelpTypes),
+      loc: registerLoc,
+      createdAt: Date.now()
+    };
+    const ok = await storeSet('volunteer:'+id, vol, true);
+    if(ok){
+      myVolunteerId = id;
+      await storeSet('my-volunteer-id', id, false);
+      toast('¡Listo! Ya sos parte de la red 🐾');
+      e.target.reset();
+      selectedHelpTypes.clear();
+      $$('#helpTypes .chip').forEach(c=>c.classList.remove('selected'));
+      renderVolunteers();
+      renderProfile();
+      checkAlreadyRegistered();
+    } else {
+      toast('No se pudo guardar. Probá de nuevo.');
+    }
+  });
+
+  function checkAlreadyRegistered(){
+    const b = $('#alreadyRegisteredBanner');
+    if(myVolunteerId){
+      b.style.display='block';
+      b.innerHTML = '<strong>Ya estás registrado/a.</strong> Podés volver a enviar este formulario para actualizar tus datos.';
+    } else {
+      b.style.display='none';
+    }
+  }
+
+  // ---------- REPORTAR ----------
+  $('#reportForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const id = uid();
+    const alertObj = {
+      id,
+      desc: $('#r-desc').value.trim(),
+      urgency: $('#r-urgency').value,
+      zone: $('#r-zone').value.trim(),
+      notes: $('#r-notes').value.trim(),
+      contactName: $('#r-contact-name').value.trim(),
+      contactPhone: $('#r-contact-phone').value.trim(),
+      loc: reportLoc,
+      status: 'activo',
+      helpers: [],
+      createdAt: Date.now()
+    };
+    const ok = await storeSet('alert:'+id, alertObj, true);
+    if(ok){
+      toast('Alerta publicada. La red ya puede verla.');
+      await showBroadcastPanel(alertObj);
+      e.target.reset();
+      reportLoc = null;
+      $('#r-geo-status').textContent='';
+      renderAlerts();
+    } else {
+      toast('No se pudo publicar. Probá de nuevo.');
+    }
+  });
+
+  function buildAlertMessage(a){
+    const urg = URGENCY_LABELS[a.urgency] || a.urgency;
+    let msg = `🐾 Alerta MANADA (${urg})\n${a.desc}\n📍 Zona: ${a.zone}`;
+    if(a.notes) msg += `\nNotas: ${a.notes}`;
+    msg += `\nContacto: ${a.contactName} - ${a.contactPhone}`;
+    msg += `\n\n¿Podés ayudar? Sumate desde la app Manada.`;
+    return msg;
+  }
+
+  async function showBroadcastPanel(alertObj){
+    const panel = $('#postReportPanel');
+    panel.style.display = 'block';
+    const msg = buildAlertMessage(alertObj);
+    $('#broadcastWaBtn').onclick = ()=>{
+      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+    };
+
+    // Voluntarios cercanos (por zona o distancia) para avisar 1 a 1
+    const keys = await storeList('volunteer:', true);
+    const vols = (await Promise.all(keys.map(k=>storeGet(k, true)))).filter(Boolean);
+    let nearby = vols;
+    if(alertObj.loc){
+      nearby = vols
+        .filter(v=>v.loc)
+        .map(v=>({...v, dist: haversine(alertObj.loc, v.loc)}))
+        .filter(v=>v.dist <= (v.radiusKm||5))
+        .sort((a,b)=>a.dist-b.dist);
+    } else {
+      nearby = vols.filter(v=> v.zone && alertObj.zone &&
+        (v.zone.toLowerCase().includes(alertObj.zone.toLowerCase().split(',')[0].trim()) ||
+         alertObj.zone.toLowerCase().includes(v.zone.toLowerCase().split(',')[0].trim())));
+    }
+    nearby = nearby.slice(0, 8);
+
+    const container = $('#nearbyVolsForWa');
+    if(nearby.length===0){
+      container.innerHTML = `<div class="helper-text">No encontramos voluntarios cuya zona coincida exactamente — usá el botón de arriba para avisar por WhatsApp a tu grupo o contactos de todas formas.</div>`;
+      return;
+    }
+    container.innerHTML = `<div class="helper-text" style="margin-bottom:10px;">Voluntarios que podrían estar cerca:</div>` + nearby.map(v=>`
+      <div class="wa-vol-row">
+        <div>
+          <div>${escapeHtml(v.name)}</div>
+          <div class="wv-meta">${escapeHtml(v.zone)}${v.dist!==undefined ? ' · '+v.dist.toFixed(1)+' km' : ''}</div>
+        </div>
+        <a class="btn btn-primary btn-small" href="https://wa.me/${v.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Avisar</a>
+      </div>
+    `).join('');
+  }
+
+  // ---------- RENDER ALERTAS ----------
+  async function renderAlerts(){
+    const keys = await storeList('alert:', true);
+    let alerts = (await Promise.all(keys.map(k=>storeGet(k, true)))).filter(Boolean);
+
+    const locBanner = $('#locBanner');
+    if(myLoc){
+      locBanner.style.display='block';
+      locBanner.innerHTML = '📍 Mostrando distancia real desde tu ubicación.';
+    } else {
+      locBanner.style.display='block';
+      locBanner.innerHTML = 'Activá tu ubicación desde <strong>Red</strong> para ver qué tan cerca está cada caso. Mientras tanto, se ordenan por más recientes.';
+    }
+
+    alerts.sort((a,b)=>{
+      if(myLoc && a.loc && b.loc){
+        return haversine(myLoc,a.loc) - haversine(myLoc,b.loc);
+      }
+      const order = {alta:0, media:1, baja:2};
+      if(order[a.urgency] !== order[b.urgency]) return order[a.urgency]-order[b.urgency];
+      return b.createdAt - a.createdAt;
+    });
+
+    const activos = alerts.filter(a=>a.status==='activo');
+    const sinCubrir = activos.filter(a=>a.helpers.length===0);
+    $('#alertCount').textContent = activos.length;
+
+    const ub = $('#uncoveredBanner');
+    if(sinCubrir.length > 0){
+      ub.style.display='flex';
+      ub.innerHTML = `
+        <div><strong>${sinCubrir.length} caso${sinCubrir.length>1?'s':''} sin cubrir</strong><br>Todavía nadie se sumó a ayudar.</div>
+        <button class="btn btn-teal btn-small" id="broadcastUncoveredBtn">📲 Difundir todos</button>
+      `;
+      $('#broadcastUncoveredBtn').addEventListener('click', ()=>{
+        const msg = `🐾 MANADA — ${sinCubrir.length} caso${sinCubrir.length>1?'s':''} SIN CUBRIR ahora mismo:\n\n` +
+          sinCubrir.slice(0,10).map(a=>`• (${URGENCY_LABELS[a.urgency]}) ${a.desc} — 📍 ${a.zone}`).join('\n') +
+          `\n\n¿Podés ayudar a alguno? Entrá a la app Manada.`;
+        window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+      });
+    } else {
+      ub.style.display='none';
+    }
+
+    if(alertsFilter === 'uncovered') alerts = sinCubrir;
+    const list = $('#alertsList');
+
+    if(alerts.length===0){
+      list.innerHTML = `<div class="empty-state">
+        <span class="tag-icon" style="width:34px;height:34px;">${tagSvg()}</span>
+        <p>${alertsFilter==='uncovered' ? 'No hay casos sin cubrir en este momento. 🎉' : 'Todavía no hay alertas activas.<br>Cuando alguien reporte un caso, va a aparecer acá.'}</p>
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = alerts.map(a=>{
+      const dist = (myLoc && a.loc) ? haversine(myLoc, a.loc).toFixed(1)+' km' : null;
+      const already = myVolunteerId && a.helpers.some(h=>h.id===myVolunteerId);
+      const resolved = a.status === 'resuelto';
+      const uncovered = !resolved && a.helpers.length===0;
+      return `
+      <div class="alert-card ${a.urgency==='alta' && !resolved ? 'urgent':''}">
+        <div class="alert-top">
+          <span class="urgency-badge urgency-${a.urgency}">
+            ${a.urgency==='alta' && !resolved ? '<span class="beacon"></span>' : ''}
+            ${URGENCY_LABELS[a.urgency]}
+          </span>
+          <span class="status-pill ${resolved?'resuelto':''}">${resolved?'✓ Resuelto':(uncovered?'⚠ Sin cubrir':'● Activo')}</span>
+        </div>
+        <div class="alert-desc">${escapeHtml(a.desc)}</div>
+        <div class="alert-meta">
+          <span>📍 ${escapeHtml(a.zone)}${dist? ' · '+dist : ''}</span>
+          <span>🕒 hace ${timeAgo(a.createdAt)}</span>
+        </div>
+        ${a.notes ? `<div class="alert-notes">${escapeHtml(a.notes)}</div>` : ''}
+        ${a.helpers.length ? `<div class="helpers-line">🐾 ${a.helpers.length} voluntario${a.helpers.length>1?'s':''} en camino: ${a.helpers.map(h=>escapeHtml(h.name)).join(', ')}</div>` : ''}
+        <div class="alert-actions" style="margin-top:10px;">
+          ${!resolved ? `<button class="btn btn-primary btn-small" data-join="${a.id}" ${already?'disabled':''}>${already?'Ya te sumaste':'Me sumo a ayudar'}</button>` : ''}
+          <a class="btn btn-outline btn-small" href="https://wa.me/${a.contactPhone.replace(/\D/g,'')}" target="_blank" rel="noopener">Contactar</a>
+          ${!resolved ? `<a class="btn btn-outline btn-small" href="https://wa.me/?text=${encodeURIComponent(buildAlertMessage(a))}" target="_blank" rel="noopener">📲 Avisar</a>` : ''}
+          ${!resolved ? `<button class="btn btn-outline btn-small" data-resolve="${a.id}">Marcar resuelto</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    $$('[data-join]').forEach(btn=>btn.addEventListener('click', ()=>joinAlert(btn.dataset.join)));
+    $$('[data-resolve]').forEach(btn=>btn.addEventListener('click', ()=>resolveAlert(btn.dataset.resolve)));
+  }
+
+  async function joinAlert(id){
+    if(!myVolunteerId){
+      toast('Primero registrate como voluntario');
+      $('.tabbar button[data-view="view-register"]').click();
+      return;
+    }
+    const vol = await storeGet('volunteer:'+myVolunteerId, true);
+    const a = await storeGet('alert:'+id, true);
+    if(!a || !vol) return;
+    if(a.helpers.some(h=>h.id===myVolunteerId)) return;
+    a.helpers.push({ id: myVolunteerId, name: vol.name });
+    await storeSet('alert:'+id, a, true);
+    toast('¡Sumado! Contactá a la persona por WhatsApp.');
+    renderAlerts();
+  }
+
+  async function resolveAlert(id){
+    const a = await storeGet('alert:'+id, true);
+    if(!a) return;
+    a.status = 'resuelto';
+    await storeSet('alert:'+id, a, true);
+    toast('Caso marcado como resuelto 🐾');
+    renderAlerts();
+  }
+
+  // ---------- RENDER VOLUNTARIOS ----------
+  async function renderVolunteers(){
+    checkAlreadyRegistered();
+    const keys = await storeList('volunteer:', true);
+    const vols = (await Promise.all(keys.map(k=>storeGet(k, true)))).filter(Boolean);
+    vols.sort((a,b)=>b.createdAt-a.createdAt);
+    $('#volCount').textContent = vols.length;
+    const list = $('#volunteersList');
+    if(vols.length===0){
+      list.innerHTML = `<div class="empty-state"><p>Todavía no hay voluntarios registrados. ¡Sé el primero!</p></div>`;
+      return;
+    }
+    list.innerHTML = vols.map(v=>`
+      <div class="profile-card" style="padding:14px 16px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:15px;">${escapeHtml(v.name)}${v.id===myVolunteerId?' (vos)':''}</strong>
+          <span style="font-size:11.5px; color:var(--muted);">radio ${v.radiusKm>=9999?'toda la ciudad':v.radiusKm+' km'}</span>
+        </div>
+        <div style="font-size:12.5px; color:var(--muted); margin-top:3px;">📍 ${escapeHtml(v.zone)}</div>
+        <div class="tags-line">${v.helpTypes.map(t=>`<span class="tag-mini">${HELP_LABELS[t]||t}</span>`).join('')}</div>
+      </div>
+    `).join('');
+  }
+
+  // ---------- RENDER PERFIL ----------
+  async function renderProfile(){
+    const c = $('#profileContent');
+    if(!myVolunteerId){
+      c.innerHTML = `<div class="empty-state">
+        <span class="tag-icon" style="width:34px;height:34px;">${tagSvg()}</span>
+        <p>Todavía no te registraste como voluntario.</p>
+        <button class="btn btn-primary" style="margin-top:14px;" id="goRegister">Registrarme ahora</button>
+      </div>`;
+      $('#goRegister')?.addEventListener('click', ()=> $('.tabbar button[data-view="view-register"]').click());
+      return;
+    }
+    const vol = await storeGet('volunteer:'+myVolunteerId, true);
+    if(!vol){ myVolunteerId=null; renderProfile(); return; }
+
+    const alertKeys = await storeList('alert:', true);
+    const alerts = (await Promise.all(alertKeys.map(k=>storeGet(k, true)))).filter(Boolean);
+    const mine = alerts.filter(a=>a.helpers.some(h=>h.id===myVolunteerId));
+
+    c.innerHTML = `
+      <div class="profile-card">
+        <div class="profile-name">${escapeHtml(vol.name)}</div>
+        <div class="profile-row"><span>WhatsApp</span><span>${escapeHtml(vol.phone)}</span></div>
+        <div class="profile-row"><span>Zona</span><span>${escapeHtml(vol.zone)}</span></div>
+        <div class="profile-row"><span>Radio de acción</span><span>${vol.radiusKm>=9999?'Toda la ciudad':vol.radiusKm+' km'}</span></div>
+        <div class="profile-row"><span>Ubicación GPS</span><span>${vol.loc?'Activada':'No activada'}</span></div>
+        <div class="tags-line">${vol.helpTypes.map(t=>`<span class="tag-mini">${HELP_LABELS[t]||t}</span>`).join('') || '<span class="tag-mini">Sin especificar</span>'}</div>
+      </div>
+      <h2 class="section-title" style="font-size:18px;">Casos en los que estás ayudando <span class="count-pill">${mine.length}</span></h2>
+      ${mine.length===0 ? `<div class="empty-state" style="padding:24px;"><p>Todavía no te sumaste a ningún caso.</p></div>` :
+        mine.map(a=>`
+          <div class="alert-card">
+            <div class="alert-desc">${escapeHtml(a.desc)}</div>
+            <div class="alert-meta"><span>📍 ${escapeHtml(a.zone)}</span><span>${a.status==='resuelto'?'✓ Resuelto':'● Activo'}</span></div>
+          </div>
+        `).join('')
+      }
+    `;
+  }
+
+  // ---------- MAPA ----------
+  const DEFAULT_CENTER = { lat: -27.7423, lng: -64.2422 }; // La Banda, Santiago del Estero
+  let leafletMap = null;
+  let mapMarkersLayer = null;
+  let showAlertsOnMap = true;
+  let showVolsOnMap = true;
+
+  const URGENCY_COLOR = { alta:'#E8593F', media:'#F2B134', baja:'#4FA88F' };
+
+  function pinIcon(color, isDog){
+    const html = `<div class="marker-pin">
+      <svg width="30" height="38" viewBox="0 0 30 38">
+        <path d="M15 1C7.3 1 1 7.2 1 14.8 1 24.9 15 37 15 37s14-12.1 14-22.2C29 7.2 22.7 1 15 1Z" fill="${color}" stroke="#12171B" stroke-width="1.5"/>
+        ${isDog
+          ? '<circle cx="15" cy="15" r="6" fill="#12171B"/><path d="M11 12.5c0-1 1-1.5 1.7-.8M19 12.5c0-1-1-1.5-1.7-.8" stroke="#F3EFE4" stroke-width="1.3" stroke-linecap="round"/>'
+          : '<circle cx="15" cy="12.5" r="4" fill="#12171B"/><path d="M9 20c0-3 2.7-5 6-5s6 2 6 5" stroke="#12171B" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
+        }
+      </svg>
+    </div>`;
+    return L.divIcon({ html, className:'', iconSize:[30,38], iconAnchor:[15,38], popupAnchor:[0,-34] });
+  }
+
+  function ensureMap(){
+    if(leafletMap) return;
+    leafletMap = L.map('mapContainer', { zoomControl:true, attributionControl:true })
+      .setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(leafletMap);
+    mapMarkersLayer = L.markerClusterGroup({
+      iconCreateFunction: function(cluster){
+        const count = cluster.getChildCount();
+        return L.divIcon({
+          html: `<div class="cluster-icon"><span>${count}</span></div>`,
+          className: '', iconSize: [36,36]
+        });
+      },
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true
+    }).addTo(leafletMap);
+    setTimeout(()=>leafletMap.invalidateSize(), 150);
+  }
+
+  $('#toggle-alerts').addEventListener('click', function(){
+    showAlertsOnMap = !showAlertsOnMap;
+    this.classList.toggle('active', showAlertsOnMap);
+    renderMap();
+  });
+  $('#toggle-vols').addEventListener('click', function(){
+    showVolsOnMap = !showVolsOnMap;
+    this.classList.toggle('active', showVolsOnMap);
+    renderMap();
+  });
+  $('#map-geo-btn').addEventListener('click', ()=>{
+    requestGeo($('#map-geo-status'), loc=>{
+      myLoc = loc;
+      ensureMap();
+      leafletMap.setView([loc.lat, loc.lng], 14);
+      L.circleMarker([loc.lat, loc.lng], { radius:7, color:'#F2B134', fillColor:'#F2B134', fillOpacity:0.9, weight:2 })
+        .addTo(leafletMap).bindPopup('Estás acá');
+    });
+  });
+
+  async function renderMap(){
+    ensureMap();
+    mapMarkersLayer.clearLayers();
+    const bounds = [];
+    let noLocCount = 0;
+
+    if(showAlertsOnMap){
+      const keys = await storeList('alert:', true);
+      const alerts = (await Promise.all(keys.map(k=>storeGet(k, true)))).filter(Boolean);
+      alerts.forEach(a=>{
+        if(a.loc){
+          const m = L.marker([a.loc.lat, a.loc.lng], { icon: pinIcon(URGENCY_COLOR[a.urgency], true) }).addTo(mapMarkersLayer);
+          m.bindPopup(`
+            <div class="popup-urgency ${a.urgency}">${URGENCY_LABELS[a.urgency]}${a.status==='resuelto'?' · resuelto':''}</div>
+            <div style="margin-top:4px;">${escapeHtml(a.desc)}</div>
+            <div style="color:var(--muted); font-size:11.5px; margin-top:4px;">📍 ${escapeHtml(a.zone)}</div>
+            ${a.helpers.length ? `<div class="helpers-popup-line">🐾 ${a.helpers.length} voluntario${a.helpers.length>1?'s':''} sumado${a.helpers.length>1?'s':''}: ${a.helpers.map(h=>escapeHtml(h.name)).join(', ')}</div>` : `<div class="helpers-popup-line" style="color:var(--muted);">Todavía nadie se sumó a este caso</div>`}
+            <div class="popup-actions"><a href="https://wa.me/${a.contactPhone.replace(/\\D/g,'')}" target="_blank" rel="noopener">Contactar por WhatsApp →</a></div>
+          `);
+          bounds.push([a.loc.lat, a.loc.lng]);
+        } else { noLocCount++; }
+      });
+    }
+
+    let volsNoLoc = 0;
+    if(showVolsOnMap){
+      const vkeys = await storeList('volunteer:', true);
+      const vols = (await Promise.all(vkeys.map(k=>storeGet(k, true)))).filter(Boolean);
+      vols.forEach(v=>{
+        if(v.loc){
+          const m = L.marker([v.loc.lat, v.loc.lng], { icon: pinIcon('#4FA88F', false) }).addTo(mapMarkersLayer);
+          m.bindPopup(`
+            <strong>${escapeHtml(v.name)}</strong>
+            <div style="color:var(--muted); font-size:11.5px; margin-top:2px;">📍 ${escapeHtml(v.zone)} · radio ${v.radiusKm>=9999?'toda la ciudad':v.radiusKm+' km'}</div>
+            <div class="tags-line" style="margin-top:6px;">${v.helpTypes.map(t=>`<span class="tag-mini">${HELP_LABELS[t]||t}</span>`).join('')}</div>
+          `);
+          bounds.push([v.loc.lat, v.loc.lng]);
+        } else { volsNoLoc++; }
+      });
+    }
+
+    if(bounds.length){
+      leafletMap.fitBounds(bounds, { padding:[30,30], maxZoom:15 });
+    }
+
+    const note = $('#mapNoLocList');
+    const parts = [];
+    if(noLocCount) parts.push(`${noLocCount} caso${noLocCount>1?'s':''} sin ubicación GPS (solo con nombre de zona)`);
+    if(volsNoLoc) parts.push(`${volsNoLoc} voluntario${volsNoLoc>1?'s':''} sin ubicación GPS`);
+    note.innerHTML = parts.length
+      ? `<div class="map-no-loc-note">ℹ️ ${parts.join(' · ')} — revisá la lista en Alertas o en la pestaña Red para verlos por nombre de barrio.</div>`
+      : '';
+
+    setTimeout(()=>leafletMap.invalidateSize(), 100);
+  }
+
+  function tagSvg(){
+    return `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2 L20 7 V13 C20 18 16.4 21.3 12 22 C7.6 21.3 4 18 4 13 V7 Z" fill="#F2B134" opacity="0.6"/><circle cx="12" cy="12" r="2.6" fill="#12171B"/></svg>`;
+  }
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // ---------- INIT ----------
+  async function init(){
+    if(!supaConfigured){
+      $('#configWarning').style.display='block';
+      $('#configWarning').innerHTML = '⚠️ Faltan las credenciales de Supabase (SUPABASE_URL / SUPABASE_ANON_KEY) en el código. La app va a verse pero no va a poder guardar ni leer datos hasta completarlas.';
+    }
+    myVolunteerId = await storeGet('my-volunteer-id', false);
+    checkAlreadyRegistered();
+    renderAlerts();
+    renderVolunteers();
+    renderVets();
+    renderCuratedResources();
+    renderProfile();
+
+    // Actualiza el feed de alertas cada 20s mientras esa pestaña está activa,
+    // para que se vean casos nuevos sin recargar la página.
+    setInterval(()=>{
+      if($('#view-alerts').classList.contains('active')) renderAlerts();
+    }, 20000);
+  }
+  init();
+})();
+</script>
+</body>
+</html>
