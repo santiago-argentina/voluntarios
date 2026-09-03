@@ -140,7 +140,7 @@
     100%{ box-shadow: 0 0 0 0 rgba(232,89,63,0); }
   }
 
-  .alert-desc{ font-size:15.5px; line-height:1.4; margin:10px 0 8px; color:var(--text); }
+  .alert-descrip{ font-size:15.5px; line-height:1.4; margin:10px 0 8px; color:var(--text); }
   .alert-meta{ display:flex; flex-wrap:wrap; gap:12px; font-size:12.5px; color:var(--muted); margin-bottom:10px; }
   .alert-meta span{ display:flex; align-items:center; gap:5px; }
   .alert-notes{ font-size:13px; color:var(--muted); background:var(--surface-2); padding:8px 10px; border-radius:8px; margin-bottom:10px; }
@@ -351,7 +351,7 @@
       <form id="reportForm">
         <div class="field">
           <label>¿Qué le pasa al perro?</label>
-          <textarea id="r-desc" placeholder="Ej: Perro mediano, cojea de la pata trasera, muy asustado, cerca de la plaza." required></textarea>
+          <textarea id="r-descrip" placeholder="Ej: Perro mediano, cojea de la pata trasera, muy asustado, cerca de la plaza." required></textarea>
         </div>
         <div class="field">
           <label>Nivel de urgencia</label>
@@ -364,7 +364,7 @@
         <div class="field">
           <label>Ubicación (barrio, calles, referencia)</label>
           <div class="loc-row">
-            <input type="text" id="r-zone" placeholder="Ej: La Banda, Bº Centro, cerca de la terminal" required>
+            <input type="text" id="r-zona" placeholder="Ej: La Banda, Bº Centro, cerca de la terminal" required>
             <button type="button" class="btn btn-outline btn-small" id="r-geo-btn">📍 Usar mi ubicación</button>
           </div>
           <div class="geo-status" id="r-geo-status"></div>
@@ -413,7 +413,7 @@
         <div class="field">
           <label>Zona / barrio donde te movés</label>
           <div class="loc-row">
-            <input type="text" id="v-zone" placeholder="Ej: La Banda, Bº Independencia" required>
+            <input type="text" id="v-zona" placeholder="Ej: La Banda, Bº Independencia" required>
             <button type="button" class="btn btn-outline btn-small" id="v-geo-btn">📍 Usar mi ubicación</button>
           </div>
           <div class="geo-status" id="v-geo-status"></div>
@@ -459,7 +459,7 @@
           </div>
           <div class="field">
             <label>Dirección o zona</label>
-            <input type="text" id="vet-zone" placeholder="Ej: Av. Belgrano 712, La Banda" required>
+            <input type="text" id="vet-zona" placeholder="Ej: Av. Belgrano 712, La Banda" required>
           </div>
           <div class="field">
             <label>¿Atiende urgencias?</label>
@@ -576,18 +576,18 @@
   const TABLES = {
     'alert:': {
       table: 'alerts',
-      toRow: o => ({ id:o.id, desc:o.desc, urgency:o.urgency, zone:o.zone, notes:o.notes||'', contact_name:o.contactName, contact_phone:o.contactPhone, lat:o.loc?o.loc.lat:null, lng:o.loc?o.loc.lng:null, status:o.status, helpers:o.helpers||[], created_at:o.createdAt }),
-      fromRow: r => ({ id:r.id, desc:r.desc, urgency:r.urgency, zone:r.zone, notes:r.notes||'', contactName:r.contact_name, contactPhone:r.contact_phone, loc:(r.lat!=null && r.lng!=null)?{lat:r.lat,lng:r.lng}:null, status:r.status, helpers:r.helpers||[], createdAt:Number(r.created_at) })
+      toRow: o => ({ id:o.id, descrip:o.descrip, urgency:o.urgency, zona:o.zona, notes:o.notes||'', contact_name:o.contactName, contact_phone:o.contactPhone, lat:o.loc?o.loc.lat:null, lng:o.loc?o.loc.lng:null, status:o.status, helpers:o.helpers||[], created_at:o.createdAt }),
+      fromRow: r => ({ id:r.id, descrip:r.descrip, urgency:r.urgency, zona:r.zona, notes:r.notes||'', contactName:r.contact_name, contactPhone:r.contact_phone, loc:(r.lat!=null && r.lng!=null)?{lat:r.lat,lng:r.lng}:null, status:r.status, helpers:r.helpers||[], createdAt:Number(r.created_at) })
     },
     'volunteer:': {
       table: 'volunteers',
-      toRow: o => ({ id:o.id, name:o.name, phone:o.phone, zone:o.zone, radius_km:o.radiusKm, help_types:o.helpTypes||[], lat:o.loc?o.loc.lat:null, lng:o.loc?o.loc.lng:null, created_at:o.createdAt }),
-      fromRow: r => ({ id:r.id, name:r.name, phone:r.phone, zone:r.zone, radiusKm:Number(r.radius_km), helpTypes:r.help_types||[], loc:(r.lat!=null && r.lng!=null)?{lat:r.lat,lng:r.lng}:null, createdAt:Number(r.created_at) })
+      toRow: o => ({ id:o.id, name:o.name, phone:o.phone, zona:o.zona, radius_km:o.radiusKm, help_types:o.helpTypes||[], lat:o.loc?o.loc.lat:null, lng:o.loc?o.loc.lng:null, created_at:o.createdAt }),
+      fromRow: r => ({ id:r.id, name:r.name, phone:r.phone, zona:r.zona, radiusKm:Number(r.radius_km), helpTypes:r.help_types||[], loc:(r.lat!=null && r.lng!=null)?{lat:r.lat,lng:r.lng}:null, createdAt:Number(r.created_at) })
     },
     'vet:': {
       table: 'vets',
-      toRow: o => ({ id:o.id, name:o.name, phone:o.phone, zone:o.zone, urgency:o.urgency, created_at:o.createdAt }),
-      fromRow: r => ({ id:r.id, name:r.name, phone:r.phone, zone:r.zone, urgency:r.urgency, createdAt:Number(r.created_at) })
+      toRow: o => ({ id:o.id, name:o.name, phone:o.phone, zona:o.zona, urgency:o.urgency, created_at:o.createdAt }),
+      fromRow: r => ({ id:r.id, name:r.name, phone:r.phone, zona:r.zona, urgency:r.urgency, createdAt:Number(r.created_at) })
     }
   };
   function parseKey(key){
@@ -726,7 +726,7 @@
       id,
       name: $('#vet-name').value.trim(),
       phone: $('#vet-phone').value.trim(),
-      zone: $('#vet-zone').value.trim(),
+      zona: $('#vet-zona').value.trim(),
       urgency: vetUrgency,
       createdAt: Date.now()
     };
@@ -756,7 +756,7 @@
           <strong style="font-size:15px;">${escapeHtml(v.name)}</strong>
           <span class="tag-mini" style="${v.urgency==='24h'?'color:#8FD9C4;':''}">${v.urgency==='24h'?'Urgencias 24 hs':'Horario de atención'}</span>
         </div>
-        <div style="font-size:12.5px; color:var(--muted); margin-top:3px;">📍 ${escapeHtml(v.zone)}</div>
+        <div style="font-size:12.5px; color:var(--muted); margin-top:3px;">📍 ${escapeHtml(v.zona)}</div>
         <div class="alert-actions" style="margin-top:10px;">
           <a class="btn btn-outline btn-small" href="https://wa.me/${v.phone.replace(/\D/g,'')}" target="_blank" rel="noopener">Contactar por WhatsApp</a>
         </div>
@@ -771,7 +771,7 @@
       items: [
         {
           name: 'Refugio El Montecito de los Canichones',
-          desc: 'ONG de rescate y rehabilitación de perros en situación de calle, con base en La Banda (Bº El Bosque).',
+          descrip: 'ONG de rescate y rehabilitación de perros en situación de calle, con base en La Banda (Bº El Bosque).',
           links: [
             { label: 'Facebook', url: 'https://www.facebook.com/canichones/' },
             { label: 'Instagram', url: 'https://www.instagram.com/refugioelmontecito/' },
@@ -786,12 +786,12 @@
       items: [
         {
           name: 'Veterinarios del Monte Santiagueño (Emergencias Kuhn)',
-          desc: 'Grupo de veterinarios que organiza salidas y asistencia de urgencia en distintas zonas de la provincia.',
+          descrip: 'Grupo de veterinarios que organiza salidas y asistencia de urgencia en distintas zonas de la provincia.',
           links: [ { label: 'Facebook', url: 'https://www.facebook.com/veterinariaskuhnemergencias/' } ]
         },
         {
           name: 'Guardia Veterinaria Santiago del Estero',
-          desc: 'Grupo de veterinarios de distintas zonas de la provincia organizado para cubrir la falta de guardias de urgencia.',
+          descrip: 'Grupo de veterinarios de distintas zonas de la provincia organizado para cubrir la falta de guardias de urgencia.',
           links: [ { label: 'Facebook', url: 'https://www.facebook.com/guardiaveterinariaok/' } ]
         }
       ]
@@ -801,12 +801,12 @@
       items: [
         {
           name: 'El Indio Veterinaria',
-          desc: 'Atiende pequeños y grandes animales; según su propia página, urgencias las 24 hs.',
+          descrip: 'Atiende pequeños y grandes animales; según su propia página, urgencias las 24 hs.',
           links: [ { label: 'Instagram', url: 'https://www.instagram.com/elindio.vet/' } ]
         },
         {
           name: 'Clínica Veterinaria Las Amarillas',
-          desc: 'Consultorio, cirugía, internación, urgencias y farmacia, en la capital.',
+          descrip: 'Consultorio, cirugía, internación, urgencias y farmacia, en la capital.',
           links: [ { label: 'Facebook', url: 'https://www.facebook.com/vet.amarilla.ok/' } ]
         }
       ]
@@ -820,7 +820,7 @@
       ${cat.items.map(it=>`
         <div class="profile-card" style="padding:14px 16px; margin-bottom:12px;">
           <strong style="font-size:15px;">${escapeHtml(it.name)}</strong>
-          <div style="font-size:13px; color:var(--muted); margin:6px 0 10px; line-height:1.4;">${escapeHtml(it.desc)}</div>
+          <div style="font-size:13px; color:var(--muted); margin:6px 0 10px; line-height:1.4;">${escapeHtml(it.descrip)}</div>
           <div class="alert-actions">
             ${it.links.map(l=>`<a class="btn btn-outline btn-small" href="${l.url}" target="_blank" rel="noopener">${escapeHtml(l.label)}</a>`).join('')}
             ${it.phone ? `<a class="btn btn-teal btn-small" href="https://wa.me/${it.phone.replace(/\D/g,'')}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
@@ -838,7 +838,7 @@
       id,
       name: $('#v-name').value.trim(),
       phone: $('#v-phone').value.trim(),
-      zone: $('#v-zone').value.trim(),
+      zona: $('#v-zona').value.trim(),
       radiusKm: Number($('#v-radius').value),
       helpTypes: Array.from(selectedHelpTypes),
       loc: registerLoc,
@@ -876,9 +876,9 @@
     const id = uid();
     const alertObj = {
       id,
-      desc: $('#r-desc').value.trim(),
+      descrip: $('#r-descrip').value.trim(),
       urgency: $('#r-urgency').value,
-      zone: $('#r-zone').value.trim(),
+      zona: $('#r-zona').value.trim(),
       notes: $('#r-notes').value.trim(),
       contactName: $('#r-contact-name').value.trim(),
       contactPhone: $('#r-contact-phone').value.trim(),
@@ -902,7 +902,7 @@
 
   function buildAlertMessage(a){
     const urg = URGENCY_LABELS[a.urgency] || a.urgency;
-    let msg = `🐾 Alerta MANADA (${urg})\n${a.desc}\n📍 Zona: ${a.zone}`;
+    let msg = `🐾 Alerta MANADA (${urg})\n${a.descrip}\n📍 Zona: ${a.zona}`;
     if(a.notes) msg += `\nNotas: ${a.notes}`;
     msg += `\nContacto: ${a.contactName} - ${a.contactPhone}`;
     msg += `\n\n¿Podés ayudar? Sumate desde la app Manada.`;
@@ -928,9 +928,9 @@
         .filter(v=>v.dist <= (v.radiusKm||5))
         .sort((a,b)=>a.dist-b.dist);
     } else {
-      nearby = vols.filter(v=> v.zone && alertObj.zone &&
-        (v.zone.toLowerCase().includes(alertObj.zone.toLowerCase().split(',')[0].trim()) ||
-         alertObj.zone.toLowerCase().includes(v.zone.toLowerCase().split(',')[0].trim())));
+      nearby = vols.filter(v=> v.zona && alertObj.zona &&
+        (v.zona.toLowerCase().includes(alertObj.zona.toLowerCase().split(',')[0].trim()) ||
+         alertObj.zona.toLowerCase().includes(v.zona.toLowerCase().split(',')[0].trim())));
     }
     nearby = nearby.slice(0, 8);
 
@@ -943,7 +943,7 @@
       <div class="wa-vol-row">
         <div>
           <div>${escapeHtml(v.name)}</div>
-          <div class="wv-meta">${escapeHtml(v.zone)}${v.dist!==undefined ? ' · '+v.dist.toFixed(1)+' km' : ''}</div>
+          <div class="wv-meta">${escapeHtml(v.zona)}${v.dist!==undefined ? ' · '+v.dist.toFixed(1)+' km' : ''}</div>
         </div>
         <a class="btn btn-primary btn-small" href="https://wa.me/${v.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Avisar</a>
       </div>
@@ -986,7 +986,7 @@
       `;
       $('#broadcastUncoveredBtn').addEventListener('click', ()=>{
         const msg = `🐾 MANADA — ${sinCubrir.length} caso${sinCubrir.length>1?'s':''} SIN CUBRIR ahora mismo:\n\n` +
-          sinCubrir.slice(0,10).map(a=>`• (${URGENCY_LABELS[a.urgency]}) ${a.desc} — 📍 ${a.zone}`).join('\n') +
+          sinCubrir.slice(0,10).map(a=>`• (${URGENCY_LABELS[a.urgency]}) ${a.descrip} — 📍 ${a.zona}`).join('\n') +
           `\n\n¿Podés ayudar a alguno? Entrá a la app Manada.`;
         window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
       });
@@ -1019,9 +1019,9 @@
           </span>
           <span class="status-pill ${resolved?'resuelto':''}">${resolved?'✓ Resuelto':(uncovered?'⚠ Sin cubrir':'● Activo')}</span>
         </div>
-        <div class="alert-desc">${escapeHtml(a.desc)}</div>
+        <div class="alert-descrip">${escapeHtml(a.descrip)}</div>
         <div class="alert-meta">
-          <span>📍 ${escapeHtml(a.zone)}${dist? ' · '+dist : ''}</span>
+          <span>📍 ${escapeHtml(a.zona)}${dist? ' · '+dist : ''}</span>
           <span>🕒 hace ${timeAgo(a.createdAt)}</span>
         </div>
         ${a.notes ? `<div class="alert-notes">${escapeHtml(a.notes)}</div>` : ''}
@@ -1082,7 +1082,7 @@
           <strong style="font-size:15px;">${escapeHtml(v.name)}${v.id===myVolunteerId?' (vos)':''}</strong>
           <span style="font-size:11.5px; color:var(--muted);">radio ${v.radiusKm>=9999?'toda la ciudad':v.radiusKm+' km'}</span>
         </div>
-        <div style="font-size:12.5px; color:var(--muted); margin-top:3px;">📍 ${escapeHtml(v.zone)}</div>
+        <div style="font-size:12.5px; color:var(--muted); margin-top:3px;">📍 ${escapeHtml(v.zona)}</div>
         <div class="tags-line">${v.helpTypes.map(t=>`<span class="tag-mini">${HELP_LABELS[t]||t}</span>`).join('')}</div>
       </div>
     `).join('');
@@ -1111,7 +1111,7 @@
       <div class="profile-card">
         <div class="profile-name">${escapeHtml(vol.name)}</div>
         <div class="profile-row"><span>WhatsApp</span><span>${escapeHtml(vol.phone)}</span></div>
-        <div class="profile-row"><span>Zona</span><span>${escapeHtml(vol.zone)}</span></div>
+        <div class="profile-row"><span>Zona</span><span>${escapeHtml(vol.zona)}</span></div>
         <div class="profile-row"><span>Radio de acción</span><span>${vol.radiusKm>=9999?'Toda la ciudad':vol.radiusKm+' km'}</span></div>
         <div class="profile-row"><span>Ubicación GPS</span><span>${vol.loc?'Activada':'No activada'}</span></div>
         <div class="tags-line">${vol.helpTypes.map(t=>`<span class="tag-mini">${HELP_LABELS[t]||t}</span>`).join('') || '<span class="tag-mini">Sin especificar</span>'}</div>
@@ -1120,8 +1120,8 @@
       ${mine.length===0 ? `<div class="empty-state" style="padding:24px;"><p>Todavía no te sumaste a ningún caso.</p></div>` :
         mine.map(a=>`
           <div class="alert-card">
-            <div class="alert-desc">${escapeHtml(a.desc)}</div>
-            <div class="alert-meta"><span>📍 ${escapeHtml(a.zone)}</span><span>${a.status==='resuelto'?'✓ Resuelto':'● Activo'}</span></div>
+            <div class="alert-descrip">${escapeHtml(a.descrip)}</div>
+            <div class="alert-meta"><span>📍 ${escapeHtml(a.zona)}</span><span>${a.status==='resuelto'?'✓ Resuelto':'● Activo'}</span></div>
           </div>
         `).join('')
       }
@@ -1206,8 +1206,8 @@
           const m = L.marker([a.loc.lat, a.loc.lng], { icon: pinIcon(URGENCY_COLOR[a.urgency], true) }).addTo(mapMarkersLayer);
           m.bindPopup(`
             <div class="popup-urgency ${a.urgency}">${URGENCY_LABELS[a.urgency]}${a.status==='resuelto'?' · resuelto':''}</div>
-            <div style="margin-top:4px;">${escapeHtml(a.desc)}</div>
-            <div style="color:var(--muted); font-size:11.5px; margin-top:4px;">📍 ${escapeHtml(a.zone)}</div>
+            <div style="margin-top:4px;">${escapeHtml(a.descrip)}</div>
+            <div style="color:var(--muted); font-size:11.5px; margin-top:4px;">📍 ${escapeHtml(a.zona)}</div>
             ${a.helpers.length ? `<div class="helpers-popup-line">🐾 ${a.helpers.length} voluntario${a.helpers.length>1?'s':''} sumado${a.helpers.length>1?'s':''}: ${a.helpers.map(h=>escapeHtml(h.name)).join(', ')}</div>` : `<div class="helpers-popup-line" style="color:var(--muted);">Todavía nadie se sumó a este caso</div>`}
             <div class="popup-actions"><a href="https://wa.me/${a.contactPhone.replace(/\\D/g,'')}" target="_blank" rel="noopener">Contactar por WhatsApp →</a></div>
           `);
@@ -1225,7 +1225,7 @@
           const m = L.marker([v.loc.lat, v.loc.lng], { icon: pinIcon('#4FA88F', false) }).addTo(mapMarkersLayer);
           m.bindPopup(`
             <strong>${escapeHtml(v.name)}</strong>
-            <div style="color:var(--muted); font-size:11.5px; margin-top:2px;">📍 ${escapeHtml(v.zone)} · radio ${v.radiusKm>=9999?'toda la ciudad':v.radiusKm+' km'}</div>
+            <div style="color:var(--muted); font-size:11.5px; margin-top:2px;">📍 ${escapeHtml(v.zona)} · radio ${v.radiusKm>=9999?'toda la ciudad':v.radiusKm+' km'}</div>
             <div class="tags-line" style="margin-top:6px;">${v.helpTypes.map(t=>`<span class="tag-mini">${HELP_LABELS[t]||t}</span>`).join('')}</div>
           `);
           bounds.push([v.loc.lat, v.loc.lng]);
